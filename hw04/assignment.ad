@@ -1,0 +1,308 @@
+---
+title: "HW04: Dlužníček"
+layout: "homework"
+list-of-files: ["src/*.c", "src/*.h"]
+solution-path: /home/kontr/pb071/hw04/settle-up
+publish: now
+deadline-early: 2023-04-19 24:00
+deadline-final: 2023-04-26 24:00
+authors:
+  - xweiser1
+editors:
+  - xstorek
+  - xpatlev
+---
+
+:website: https://settleup.io/
+:diplomka: https://david.vavra.me/files/master-thesis-david-vavra.pdf
+// ČNB 7. 4. 2023
+:eur-rate: 23.410
+
+== Představení úkolu
+
+Tento domácí úkol je jiný. Na rozdíl od ostatních domácích úloh, kde si
+vypracováváte zadání zcela sami, případně dostanete k dispozici kostru, na
+kterou navazujete, zde dostanete již (skoro) hotové řešení včetně testů
+nanečisto. Přesto věnujte pozornost každému bodu zadání, neb přebráním práce
+přebíráte také odpovědnost za celý zdrojový kód včetně dodaných částí.
+
+Zadání domácího úkolu je inspirováno aplikací {website}[Settle-Up,
+role=external], která je výborným společníkem například na výlet s přáteli do
+Norska, kdy si potřebujete vést záznamy o tom, kdo, kolik, co a za koho platil.
+Více informací můžete nalézt například v {diplomka}[diplomové práci,
+role=external] autora projektu.
+
+=== Uvedení do děje
+
+Právě jste byli přijati do firmy jako náhrada za bývalého zaměstnance Ládínka,
+kterého vyhodili pro neschopnost v práci s gitem. Bohužel se vám nikdo z kolegů
+nemůže věnovat, jsou totiž zaneprázdněni opravováním následků `git push --force`
+do mainu. Vaším úkolem je převzít práci po nedávno vyhozeném kolegovi a do dvou
+týdnů ji dokončit. Jedná se pouze o vnitrofiremní prezentaci, není tedy nutné
+vyvinout kompletní aplikaci, stačí pouze backend s dostatečnou funkcionalitou.
+
+Rozhodnutí, zda aplikaci pouze upravíte, nebo ji napíšete celou od začátku,
+je pouze na vás.
+
+TIP: Než odešel, stihl si kolega napsat testy k rozpracované aplikaci. Využijte je.
+
+== Zadání
+
+Vytvořte program, který načte 3 vstupní soubory — seznam osob, převodník měn
+a seznam proběhlých transakcí. Výstupem programu poté bude záznam o tom, kdo má
+komu kolik peněz poslat, aby došlo k vyrovnání dluhu. Aplikace musí umět
+pracovat s více měnami, nicméně dluh se bude vyrovnávat pouze v základní měně.
+
+    ./settle-up <person-file> <currency-file> <payments-file>
+
+V případě, že nastane chyba, vypíše program na standardní chybový výstup
+chybovou hlášku a skončí s nenulovým návratovým kódem. Přesné znění chybové
+hlášky není podstatné, nicméně by se nemělo jednat o nicneříkající blábol.
+
+Pro hodnocení za plný počet bodů plně postačí, když bude vaše řešení schopné
+vyrovnat dluhy v „libovolném množství“ transakcí.
+
+=== Formát vstupních souborů
+
+Obecně platí, že prázdný řádek je validní a program jej při načítání přeskočí.
+Naopak nic nepředpokládejte o délce souborů, ani o délce řádků (a z toho
+vyplývající délky jednotlivých řetězců). Dále počítejte s tím, že testy mohou
+programu podstrčit soubory v nevalidním formátu.
+
+Prázdný řádek je složen pouze z bílých, anebo žádných znaků. Žádný term
+(znázorněný ve špičatých závorkách) nemá jako svůj první ani poslední znak bílý
+znak. Pokud není v popisu termu řečeno jinak, neobsahuje bílé znaky ani
+uprostřed.
+
+[NOTE]
+====
+Reálně to znamená, že každý term může být obklopen nenulovým počtem bílých
+znaků, které nejsou na závadu. Pouze nebudou obsaženy ve vyparsované hodnotě
+daného termu.
+====
+
+==== Seznam osob
+
+Každý neprázdný řádek je ve formátu:
+
+  <id> <name>
+
+* `id` je unikátní identifikátor osoby
+** obsahuje pouze znaky `a-z`, `A-Z` a `0-9`
+* `name` je jméno osoby
+** může obsahovat mezery i další bílé znaky
+** nemusí být unikátní
+
+==== Převodník měn
+
+Každý neprázdný řádek je ve formátu:
+
+  <id> <rate>
+
+* `id` je unikátní identifikátor měny
+** obsahuje pouze znaky `a-z`, `A-Z` a `0-9`
+* `rate` je číselný údaj určující *poměr mezi aktuální a základní měnou.*
+  Stanovuje, jakým číslem je třeba násobit základní měnu pro převod na aktuální
+** základní měna má hodnotu `rate` rovnu nule
+** formát je celé nebo desetinné číslo s desetinnou tečkou
+** maximální počet cifer *před* desetinnou tečkou je *5*
+** maximální počet cifer *za* desetinnou tečkou je *4*
+
+==== Seznam plateb
+
+Každý neprázdný řádek je ve formátu:
+
+  <who-paid> <who-owe> <amount> <currency>
+
+* `who-paid` je seznam identifikátorů osob oddělených znakem středníku (`;`)
+* `who-owe` je seznam identifikátorů osob oddělených znakem středníku (`;`)
+* `amount` je číselný údaj stanovující výši platby
+** formát je celé nebo desetinné číslo s tečkou značící desetinnou tečku
+** maximální počet cifer *před* desetinnou tečkou je *7*
+** maximální počet cifer *za* desetinnou tečkou je *2*
+* `currency` je identifikátor měny
+
+=== Formát výstupu
+
+Formát výstupu je přesně následující:
+
+  <debtor-name> (<debtor-id>) -> <creditor-name> (<creditor-id>): <amount> <currency>
+
+* `debtor-name` je jméno dlužníka
+* `debtor-id` je unikátní identifikátor dlužníka
+* `creditor-name` je jméno věřitele
+* `creditor-id` je unikátní identifikátor věřitele
+* `amount` je nezáporná částka v základní měně, která má být převedena pro urovnání dluhu
+** bude ve formátu desetinného čísla s právě dvěma ciframi pro desetinnou část
+** bude ve formátu celého čísla, pokud by byly za desetinnou tečkou dvě nuly (`00`)
+** *musí podporovat výpis až na 15 cifer před desetinnou tečkou*
+* `currency` je identifikátor základní měny
+
+Dodržte formát výstupu přesně včetně mezer. Kontrolní skript může, ale nemusí
+být, v tomto ohledu benevolentní. Pro jistotu zde je uvedený formátovací řetězec
+pro funkci `printf(3)`:
+
+    "%s (%s) -> %s (%s): %s %s\n"
+
+== Požadavky
+
+Účelem programu je vypočítat, kdo má komu převést jakou částku tak, aby
+u každého věřitele byl dluh vypořádán. Program umožňuje zpracovávat platby ve
+více měnách, nicméně vypořádání realizuje pouze v základní měně. Na vstupu
+obdrží program 3 druhy vstupních dat:
+
+* seznam osob
+* převodník měn
+* seznam plateb
+
+=== Seznam osob
+
+Jedná se o definiční soubor, pomocí kterého se vytváří seznam osob, u kterých se
+očekává, že si budou navzájem dlužit peníze. Každá osoba má své jméno a unikátní
+id.
+
+Možné chyby, které mohou nastat:
+
+* id osoby není unikátní
+** shoda s id měny není na závadu
+* v souboru jsou méně jak dvě osoby
+
+=== Převodník měn
+
+Jedná se o definiční soubor, pomocí kterého je možné definovat měny a jejich
+směnný kurz. Každá měna je definována svým id a koeficientem, který stanovuje,
+kolik jednotek základní měny má hodnotu jedné jednotky aktuální měny. Základní
+měna má hodnotu koeficientu rovnu nule. *Není třeba kontrolovat, že koeficient
+má nejvýše určený počet číslic.*
+
+Možné chyby, které mohou nastat:
+
+* id měny není unikátní
+** shoda s id osoby není na závadu
+* neexistuje základní měna
+* existuje více základních měn
+* koeficient je záporný
+
+.Příklad převodu měn:
+[subs="verbatim,attributes"]
+  CZK 0
+  EUR {eur-rate}
+
+[TIP]
+====
+V tomto případě má {eur-rate} jednotek CZK hodnotu 1 EUR. Převod `x` EUR do CZK
+se realizuje jako `x * {eur-rate}`.
+====
+
+=== Seznam plateb
+
+Jedná se o soubor, který s využitím údajů z předchozích dvou uvedených souborů
+vytváří seznam uskutečněných plateb. Každá platba se skládá ze čtyř údajů:
+
+* seznam plátců
+* seznam dlužníků
+* částka
+* měna, ve které byla platba realizována
+
+Seznam plátců i seznam dlužníků se skládá id osob. V každém seznamu může být
+osoba uvedena vícekrát — takovým způsobem lze stanovit váhu osoby, s jakou se
+podílela na platbě. Měna je uvedena pomocí id měny. Soubor je validní
+i v případě, že neobsahuje žádnou platbu. Dále je validní, pokud je stejná osoba
+uvedena v seznamu plátců i v seznamu dlužníků.
+
+Může nastat situace, kdy bude částka záporná. To je naprosto v pořádku — jedná
+se o situaci, kdy některý člen skupiny realizuje příjem. *Není třeba
+kontrolovat, že částka má nejvýše určený počet číslic.*
+
+Možné chyby, které mohou nastat:
+
+* osoba se nenachází v seznamu osob
+* měna se nenachází v převodníku měn
+
+=== Výstup programu
+
+Výstup programu obsahuje informaci, kdo má komu poslat jakou částku tak, aby
+došlo k vyrovnání dluhů v rámci celé skupiny. Pokud není co vyrovnávat, je
+legitimní, když bude výstup programu prázdný. Při vyrovnání není nutné, aby
+dlužník vracel dlužnou částku tomu, kdo za něho platil.
+
+Pro nebonusové řešení jsou na výsledný seznam transakcí kladeny tyto podmínky:
+
+* Jedná se o množinu, kdy prvkem je řádek.
+* Pro každé `{X, Y}`, `X` a `Y` jsou z množiny osob, `X` je různé od `Y`, `C` je
+  základní měnou, existuje nejvýše jedno `N` z oboru kladných celých čísel
+  dělených stem takové, že záznam *`X.name` (`X.id`) -> `Y.name` (`Y.id`): `N`
+  `C.id`* patří do výsledného seznamu transakcí.
+
+[NOTE]
+====
+Stručně řečeno, ve výstupu nesmí nastat situace, kdy by jeden člověk platil sobě
+samému, nebo dvakrát tomu stejnému člověku.
+====
+
+Při vyrovnání dluhu může nastat zaokrouhlovací problém — například pokud se
+částka 100 korun rozdělí mezi 3 osoby. V tom případě je tolerována výsledná
+odchylka o jednu setinu základní měny u každé zúčastněné osoby. *Navzdory této
+toleranci musí mít program snahu dluh co nejvíce eliminovat.*
+
+=== Limity
+
+Načítáte-li do programu číslo, můžete předpokládat, že nepřekročí velikostní
+limity stanovené v sekci <<Formát vstupních souborů>>. Číslo ve výstupu taktéž
+nepřekročí limit uvedený v sekci <<Formát výstupu>> (za předpokladu, že jste
+algoritmus naimplementovali korektně). *Je však žádoucí kontrolovat, zda je
+načítaná sekvence znaků číslem.*
+
+== Bonusové rozšíření
+
+=== Minimalizace počtu transakcí [10 bodů]
+
+Bonusová část tohoto úkolu spočívá v tom, že implementujete algoritmus vyrovnání
+dluhů tak, aby bylo potřeba vykonat minimální počet transakcí. Různé naivní
+přístupy mohou vést k jejich vyššímu počtu. Pro lepší pochopení je vhodné si
+odkazovanou {diplomka}[diplomovou práci, role=external] nastudovat důkladněji.
+
+Protože výsledný algoritmus může vést k časově náročnějšímu výpočtu, bude se
+optimální algoritmus spouštět pouze v případě, že program obdrží jako svůj první
+argument `--bonus` (další argumenty budou logicky posunuté o jednu pozici).
+
+* Bonusová část bude spouštěna nejvýše nad 19 osobami.
+* Bonusová část bude spouštěna pouze nad takovou sadou testů, které lze vyrovnat
+  bez zaokrouhlení a na které není třeba využít tolerance odchylky 0.01 hodnoty
+  základní měny.
+* Pro korektní implementaci bonusu je dostačující implementovat algoritmus
+  popsaný v diplomové práci.
+
+== Poznámky
+
+Referenční implementaci najdete v `{{page.solution-path}}`.
+
+Může se stát, že nebudete něčemu z dodaného kódu rozumět. Jedná se o záměr,
+nikoliv omyl.
+
+Dodaný rozpracovaný program je rozčleněn do tří složek: `src`, `tests` a `data`.
+Pro odevzdání je relevantní pouze obsah složky `src`. Váš program bude sestaven
+ze všech souborů `*.c` a `*.h`, které se nachází ve složce `src`. Obsah
+ostatních složek nebudou brát testy v potaz. Při úpravách tedy můžete libovolně
+měnit názvy souborů, případně soubory přidávat či odebírat.
+
+Součástí dodaného programu jsou dvě sady testů: testy nanečisto, které už znáte
+a testy napsané vaším fiktivním kolegou. Při odevzdání se z nich spouští pouze
+sada nanečisto. Jinými slovy, testy od kolegy nemusí vůbec projít (ani
+existovat) aby vám prošly testy v kontru.
+
+Referenční implementace se snaží korektně vypořádat i se situacemi, které jsou
+v zadání popsané, že nenastanou. Například kontroluje, že načítaná čísla mají
+maximální povolený počet číslic nebo že nedojde k přetečení při výpočtu
+vypořádání dluhů. *Vaše aplikace tuto kontrolu mít nemusí*... ale může ;)
+
+*Seznamy osob a měn budou mít typicky do stovek řádků. Naopak transakční soubor
+může mít řádově statisíce záznamů.*
+
+=== Doporučení
+
+Využijte testů napsaných Vaším bývalým kolegou k opravení jím naimplementované
+funkcionality, můžete je samozřejmě i upravovat či mazat.
+
+Zamyslete se nad interní reprezentací desetinných čísel. Jak velké jsou typy pro
+desetinná čísla v jazyce C? Budou vám stačit? Zkuste zkonzultovat dokumentaci.

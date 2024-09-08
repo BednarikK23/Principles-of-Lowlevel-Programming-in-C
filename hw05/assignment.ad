@@ -1,0 +1,453 @@
+---
+title: "HW05: Disk Usage"
+layout: "homework"
+list-of-files: ["*.h", "*.c"]
+use-mathjax: true
+solution-path: /home/kontr/pb071/hw05/dt
+publish: now
+deadline-early:  '2023-05-03 24:00'
+deadline-final:  '2023-05-10 24:00'
+authors:
+  - Miroslav Jaroš: mijaros@mail.muni.cz
+  - Miroslav Cambel: xcambel@fi.muni.cz
+  - Matej Dujava: xdujava@fi.muni.cz
+---
+
+
+== Představení úkolu
+
+Jednou z běžných činností při správě počítače je zjišťování stavu souborového systému, zvláště pak jeho využití. Existuje
+mnoho různých nástrojů, které takovou činnost umožňují. Pro běžné použití existuje široká škála programů pracujících v GUI, nicméně
+pro použití na serveru nebo při řešení kritických selhání stroje (jako je například nemožnost spustit Xserver) je konzolové
+rozhraní poměrně velkou výhodou.
+
+Vaším cílem bude vytvořit program, který kombinuje příkazy `du` a `tree`, tedy vypíše pěkně formátovaný podstrom souborového systému společně
+s informací o velikosti. Zároveň budete tuto informaci o velikosti vypisovat v nejrozumnější jednotce, tak aby byla tato informace
+dobře interpretovatelná člověkem.
+
+== Zadání
+
+Vaším úkolem bude napsat program, který vypočítá kumulativní velikost všech položek v podstromě souborového systému zadaném cestou na příkazové řádce a 
+vypíše aktuální stav tohoto podstromu.
+
+[source]
+----
+./dt [OPTIONS] PATH
+----
+
+Kde `OPTIONS` jsou následující přepínače:
+
+* `-a` počítá s nastavenou velikostí souboru místo reálně užité velikosti na disku (alokované bloky `* 512`), 
+* `-s` setřídí potomky v podsložce dle velikosti místo jména,
+* `-d NUMBER` omezí hloubku vypisovaného stromu (hloubku zanoření ve výpisu) do úrovně určené číslem `NUMBER`,
+** `NUMBER` je celé nezáporné číslo,
+** pokud byl přepínač `-d` zadán, musí být toto číslo uvedeno jako přímo následující
+   argument příkazové řádky,
+** pokud argument `NUMBER` předán nebyl, nelze jej jako číslo reprezentovat, nebo je záporný, musí program vypsat chybovou hlášku a okamžitě se ukončit,
+* `-p` přepne na vypisování procentuálního využití místo velikosti. 
+
+
+Váš program vypíše všechny nalezené složky a soubory, každý na samostatný řádek ve formátu popsaném níže. Váš program bude vypisovat pouze
+běžné soubory a složky, speciální soubory ignorujte. Položky složky (nebo-li adresáře, v cizích jazycích též priečinku či directory) budou vypsány v lexikografickém uspořádání dle jména,
+nebo velikosti celého podstromu.
+
+Jména souborů jsou porovnána bez ohledu na velikost písmen (ignore case, tedy řetězce `"ab"` a `"AB"` jsou nerozlišitelné), velikost písmen bude brána v potaz, až v okamžiku
+shody. Následující seznam ukazuje vlastnost takto definované relace uspořádání (`X < Y` znamená `X` vypiš před `Y`):
+
+* `Aa < aa`
+* `aa < Ba`
+* `AA < Aa < aA < aa < Ba`
+
+Předpokládejte, že v rámci jedné složky mají všechny soubory v ní obsažené unikátní jméno, tedy situace, kdy jsou dvě jména shodná, nemusíte řešit.
+
+V případě uspořádání dle velikosti váš program vypíše soubory uspořádané sestupně dle zvolené velikosti (buď reálně využitých bloků, 
+nebo nastavené), v případě kolize, tedy souborů se stejnou velikostí, rozhoduje jméno souboru (dle stejných pravidel 
+jako v případě lexikografického uspořádání).
+
+
+=== Výpočet velikosti podstromu
+
+Cílem vašeho programu je vypsat všechny soubory nalezené v předaném podstromě souborového systému, společně s nalezenou velikostí, kde velikost chápeme
+jako:
+
+* součin počtu bloků, které daný soubor obsadil, a velikosti bloku (512 B) u běžného souboru, pokud není přepínačem určeno jinak,
+* v případě zadání přepínače `-a` bereme za velikost informaci o velikosti v bytech uloženou u i-uzlu,
+* pro složky je velikost součtem: 
+** velikosti souboru v němž je struktura složky uložena, která je určena dle stejných pravidel jako u souboru,
+** velikosti všech souborů obsažených v dané složce (v případě složek jde o velikost vypočítanou dle stejných pravidel), tedy velikost
+   všech souborů v podstromě definované danou složkou.
+   
+
+=== Výpis velikosti
+
+V případě že byl váš program spuštěn s přepínačem `-p`, bude vypisovat procentuální 
+zastoupení daného potomka v celku, přesněji tedy stonásobek podílu velikosti potomka 
+ku velikosti celku. Kořen stromu je tedy nezbytně `100%`. 
+
+Pokud byl program spuštěn s přepínačem `-a`, budou procenta vypočítána z nastavené 
+velikosti a součtu nastavených velikostí u kořene, jinak bude použita reálná velikost 
+na disku (počet bloků vynásobených 512).
+
+Velikosti bude váš program vypisovat přepočítané na nejbližší jednotku binárního 
+prefixu Byte. Binární prefix se od klasického dekadického (používaného v systému SI) liší 
+tím, že místo mocnin +++$10^3$+++ počítá s mocninami +++$2^{10}$+++.
+
+Rozmezí a jednotky jsou vyjádřeny v následující tabulce:
+
+[role="table" cols="2,3,1m",options="header"]
+|===
+|Jméno
+|Rozsah
+|Koncovka
+
+|Byte
+|+++$ \langle 0; 1023 \rangle $+++
+|`B`
+
+|Kibibyte
+|+++$\langle 1024; 2^{20} - 1 \rangle $+++
+|`KiB`
+
+|Mibibyte
+|+++$\langle 2^{20}; 2^{30} - 1 \rangle $+++
+|`MiB`
+
+|Gibibyte
+|+++$\langle 2^{30}; 2^{40} - 1 \rangle$+++
+|`GiB`
+
+|Tebibyte
+|+++$\langle 2^{40}; 2^{50}  - 1 \rangle $+++
+|`TiB`
+
+|Pebibyte
+|+++$\langle 2^{50}; 2^{60} - 1 \rangle$+++
+|`PiB`
+
+|===
+
+Velikost se vypočítá následujícím postupem:
+
+. Určíme nejbližší menší jednotku (tedy jednotku, do jejíhož rozsahu přímo spadá velikost).
+. Velikost vydělíme spodní hranicí nalezeného rozsahu (tedy pro `KiB` vydělíme +++$1024$+++, pro `MiB` vydělíme +++$2^{20}$+++).
+. Výsledek vypíšeme jako desetinné číslo doplněné určenou jednotkou.
+
+=== Formát řádku
+
+Výpis prohledávaného podstromu bude podobný výpisu utility https://linux.die.net/man/1/tree[`tree`]. Tedy:
+
+
+[source]
+----
+{ERROR}{SIZE}{SUFFIX} {TREE_PREFIX} {FILE_NAME}
+----
+
+* `{ERROR}` je příznak chyby v podstromu, pokud se při načítání nepodaří některý ze souborů otevřít (viz níže). 
+** U složky s chybou a všech nadřazených složek se vypíše `?` následovaný mezerou. 
+** U složek, ve kterých se žádná chyba nevyskytla, se vypíšou dvě mezery za sebou (znaky `0x20`).
+** Pokud se žádná chyba nevyskytla po přečtení celého podstromu, nevypisuje se nic (ani otazník, ani mezery).
+* `{SIZE}` je reprezentace vypisovaného čísla.
+** Všechna velikost se vypisuje jako desetinné číslo s přesností na jedno desetinné místo.
+** V případě procent je toto číslo z rozmezí `<0.0; 100.0>`.
+** V případě velikosti z rozmezí `<0.0; 1024.0>`.
+** Velikost bude vždy zarovnaná vpravo a bude zleva doplněna mezerami v případě potřeby:
+*** u procent na 5 znaků,
+*** u velikostí na 6 znaků.
+* `{SUFFIX}` reprezentuje jednotku vypsaného čísla.
+** V případě, že bylo požádáno o výpis procentuálního zastoupení, bude výpis zakončen značkou `%`, která bude vypsána těsně za číslem (bez mezer).
+** Jinak bude vypsána mezera a správná jednotka dle výpočtu uvedeného výše.
+* Po jednotce je vypsána mezera.
+* `{TREE_PREFIX}` je předpona, která vykresluje strom a skládá se ze dvou typů elementů:
+** `"|&#160;&#160;&#160;", "&#160;&#160;&#160;&#160;"` jsou možné oddělovače hloubky zanoření, které jsou vysvětleny níže. Může jich být +++$<0; n>$+++.
+** `"|--", "\\--"` jsou možné předpony názvu souboru:
+*** Před kořenovým uzlem (počáteční element) se nevypisuje nic, tedy `""`,
+*** Před posledním uzlem ve složce se vypíše `"\\--"`,
+*** Jinak se před každým uzlem vypíše `"|--"`.
+* Za předponou názvu souboru se vypíše mezera, pokud se nejedná o kořen.
+* `{FILE_NAME}` je jméno souboru:
+** V případě kořenového uzlu se jméno vypisuje tak, jak bylo předáno na příkazové řádce.
+** U všech nalezených souborů/složek se vypisuje pouze jméno samotného souboru/složky.
+
+==== Nastavení prefixu
+
+Každá složka nastavuje pro všechny své potomky určitý prefix, za kterým následuje
+vodící čára dané úrovně, která je tvořená prefixem při výpisu samotného uzlu.
+Pro určení jaký prefix má být nastaven lze použít následující pravidla:
+
+* Pokud není složka poslední (tedy sama složka byla vypsána jako `|-- dir`), nastaví se prefix na  `"|&#160;&#160;&#160;"`, svislítko a tři mezery.
+* Pokud je složka poslední (tedy byla vypsána jako `\\-- dir`), tak se prefix nastaví na `"&#160;&#160;&#160;&#160;"`, čtyři mezery.
+* Kořenová složka (předaná jako argument programu) nenastavuje žádný prefix.
+
+==== Omezení hloubky výpisu
+
+V případě, že byl program spuštěn s přepínačem `-d`, omezí váš program hloubku výpisu.
+
+* Přepínač se netýká prohledávání souborového systému, ten musíte projít celý.
+* Přepínač omezuje, kolik úrovní potomků bude od kořene vypsáno.
+* Kořen je brán jako úroveň `0`.
+** Pokud je předáno `-d 0`, potom váš program vypíše samotný kořen a vypočítanou velikost.
+* Všichni přímí potomci kořene jsou úrovně `1`.
+* Pro libovolný element platí, že jeho úroveň se rovná  `úroveň rodiče + 1`.
+** Pokud tedy je potomek úrovně vyšší než předané, tak se nevypíše (včetně svých vlastních potomků).
+
+==== Ošetření chyb
+
+Jako první dobrou zprávu, než začnete cokoliv řešit, vězte, že všechny testované cesty, budou vždy validní
+z pohledu dané gramatiky. Můžete se tedy spolehnout, že bude platit následující:
+
+* každá vám předaná cesta bude nejvýše `4095 B` dlouhá,
+* každé jméno souboru bude nejvýše `255 B` dlouhé (včetně elementů mezi `/` v předané cestě),
+* pokud předaná cesta povede na existující složku v souborovém systému, nepřesáhne délka cesty 
+  ke všem listům daného podstromu `4095 B`.
+
+[WARNING] 
+.POZOR!
+====
+To ovšem neznamená, že všechny předané cesty budou platnými soubory. Tuto kontrolu musíte implementovat!
+====
+
+Pokud při procházení podstromu narazíte na složku, u které některá z vámi prováděných akcí selže
+(zjištění vlastností, otevření), musí na to váš program korektně zareagovat:
+
+* vypište na standardní chybový výstup libovolnou srozumitelnou zprávu,
+* ve finálním výpisu označte (viz formát výpisu) tento uzel a všechny jeho předky značkou otazníku,
+* kvůli zachování formátování vypište u všech ostatních řádků (tedy u těch, jejichž skenování proběhlo bez chyby)
+  dvě mezery na počátku řádku.
+
+==== Ukázka výpisu
+
+[source]
+----
+   1.6 MiB testDir
+ 300.0 KiB |-- a
+  68.0 KiB |   |-- a
+  16.0 KiB |   |   |-- e.txt
+  16.0 KiB |   |   |-- f.txt
+  16.0 KiB |   |   |-- g.txt
+  16.0 KiB |   |   \-- h.txt
+  72.0 KiB |   |-- b
+  17.0 KiB |   |   |-- e.txt
+  17.0 KiB |   |   |-- f.txt
+  17.0 KiB |   |   |-- g.txt
+  17.0 KiB |   |   \-- h.txt
+  76.0 KiB |   |-- c
+  18.0 KiB |   |   |-- e.txt
+  18.0 KiB |   |   |-- f.txt
+  18.0 KiB |   |   |-- g.txt
+  18.0 KiB |   |   \-- h.txt
+  80.0 KiB |   \-- d
+  19.0 KiB |       |-- e.txt
+  19.0 KiB |       |-- f.txt
+  19.0 KiB |       |-- g.txt
+  19.0 KiB |       \-- h.txt
+ 364.0 KiB |-- b
+  84.0 KiB |   |-- a
+  20.0 KiB |   |   |-- e.txt
+  20.0 KiB |   |   |-- f.txt
+  20.0 KiB |   |   |-- g.txt
+  20.0 KiB |   |   \-- h.txt
+  88.0 KiB |   |-- b
+  21.0 KiB |   |   |-- e.txt
+  21.0 KiB |   |   |-- f.txt
+  21.0 KiB |   |   |-- g.txt
+  21.0 KiB |   |   \-- h.txt
+  92.0 KiB |   |-- c
+  22.0 KiB |   |   |-- e.txt
+  22.0 KiB |   |   |-- f.txt
+  22.0 KiB |   |   |-- g.txt
+  22.0 KiB |   |   \-- h.txt
+  96.0 KiB |   \-- d
+  23.0 KiB |       |-- e.txt
+  23.0 KiB |       |-- f.txt
+  23.0 KiB |       |-- g.txt
+  23.0 KiB |       \-- h.txt
+ 428.0 KiB |-- c
+ 100.0 KiB |   |-- a
+  24.0 KiB |   |   |-- e.txt
+  24.0 KiB |   |   |-- f.txt
+  24.0 KiB |   |   |-- g.txt
+  24.0 KiB |   |   \-- h.txt
+ 104.0 KiB |   |-- b
+  25.0 KiB |   |   |-- e.txt
+  25.0 KiB |   |   |-- f.txt
+  25.0 KiB |   |   |-- g.txt
+  25.0 KiB |   |   \-- h.txt
+ 108.0 KiB |   |-- c
+  26.0 KiB |   |   |-- e.txt
+  26.0 KiB |   |   |-- f.txt
+  26.0 KiB |   |   |-- g.txt
+  26.0 KiB |   |   \-- h.txt
+ 112.0 KiB |   \-- d
+  27.0 KiB |       |-- e.txt
+  27.0 KiB |       |-- f.txt
+  27.0 KiB |       |-- g.txt
+  27.0 KiB |       \-- h.txt
+ 492.0 KiB \-- d
+ 116.0 KiB     |-- a
+  28.0 KiB     |   |-- e.txt
+  28.0 KiB     |   |-- f.txt
+  28.0 KiB     |   |-- g.txt
+  28.0 KiB     |   \-- h.txt
+ 120.0 KiB     |-- b
+  29.0 KiB     |   |-- e.txt
+  29.0 KiB     |   |-- f.txt
+  29.0 KiB     |   |-- g.txt
+  29.0 KiB     |   \-- h.txt
+ 124.0 KiB     |-- c
+  30.0 KiB     |   |-- e.txt
+  30.0 KiB     |   |-- f.txt
+  30.0 KiB     |   |-- g.txt
+  30.0 KiB     |   \-- h.txt
+ 128.0 KiB     \-- d
+  31.0 KiB         |-- e.txt
+  31.0 KiB         |-- f.txt
+  31.0 KiB         |-- g.txt
+  31.0 KiB         \-- h.txt
+----
+
+== Požadavky
+
+* Program musí korektně ošetřovat předávané parametry a v případě chyby se ukončit.
+* Za chybu se považuje:
+** předání nerozpoznaného přepínače,
+*** můžete se spolehnout, že v základní verzi budeme testovat pouze přepínače, které
+    nekolidují s případnými bonusovými rozšířeními.
+** nezpracovatelný argument pro přepínač `-d`, tedy nečíselný nebo záporný,
+** vícenásobné zadání libovolného přepínače,
+** neexistující, nebo nepovolená cesta k prohledání.
+* V případě kterékoliv z těchto chyb se musí váš program ukončit s nenulovou 
+  návratovou hodnotou a vypsat chybovou hlášku na standardní chybový výstup.
+* Váš program by měl pracovat s rozumnou efektivitou, tedy 
+** načítání informací ze souborového systému by mělo mít lineární složitost vzhledem k počtu souborů,
+** výpis výsledného stromu by měl mít složitost +++$\mathcal{O}(n \log n)$+++.
+** s paměťovou složitostí +++$\mathcal{O}(n \log_k n)$+++, kde +++$k$+++ je průměrný 
+   počet potomků ve složce v prohledávaném podstromě.
+* V případě, že se vám nepodaří některou z nalezených složek při procházení otevřít, 
+  vypište na standardní chybový výstup libovolnou chybovou hlášku a pokračujte v procházení dále.
+** Ideálně vypište alespoň druh chyby a soubor, kterého se  chyba týkala.
+** Testy nebudou ověřovat obsah vašeho sdělení, pouze počet řádků na standardním chybovém výstupu, 
+   ale váš cvičící vám může vaši implementaci vrátit, pokud vaše výpisy nebudou dávat žádný smysl.
+* Všechny speciální soubory ignorujte, tedy pokud se při prohledávání objeví soubor,
+  jehož typ není ani složka, ani běžný soubor, tak jej ignorujte jak ve výpisu, tak při výpočtu. 
+* Můžete se spolehnout, že maximální délka jména souboru je 255 B a největší délka cesty i s jménem souboru nepřesáhne 4095 B.
+* Pokud je předána cesta cestou k obyčejnému souboru, vypíše váš program pouze jeho 
+  velkost ve vhodných jednotkách (nebo `100.0%` pokud byl předán přepínač `-p`) a jeho jméno.
+* Pokud je předána cesta ke speciálnímu souboru, váš program nevypíše 
+  nic a skončí s nulovou návratovou hodnotou.
+
+== Bonusová rozšíření
+
+=== Symbolické odkazy [5 bodů]
+
+Upravte svůj program tak, aby korektně pracoval se symbolickými odkazy. Symbolický odkaz 
+je speciální druh souboru, který je operačním systémem interpretován jako odkaz na jiný soubor 
+nebo složku v souborovém systému. Váš program by měl nalezený symbolický odkaz interpretovat 
+jako obyčejný soubor, nikoliv jako skok na jiné místo.
+
+NOTE: Při důkladném prostudování manuálových stránek relevantních funkcí zjistíte, 
+že celá magie tohoto bonusu je dosažitelná změnou volání jedné funkce.
+
+[WARNING]
+.Pozor, na pozici lomítka záleží. 
+====
+Pokud bude vaší implementaci předána na vstupu cesta končící lomítkem, neberte ohled na typ daného souboru, 
+ale vždy jej interpretujte jako složku (pokud to není možné, nechť to vaše implementace považuje za neexistující cestu).
+Pokud nekončí znakem `/`, tak je potřeba určit o jaký druh souboru se jedná, v případě speciálních
+nic nevypíšete, v případě obyčejných souborů či symbolických odkazů vypíšete pouze informace o daném souboru
+a v případě složky budete postupovat standardním způsobem.
+====
+
+=== Výpis pouze jednoho zařízení [5 bodů]
+
+Rozšiřte svůj program o přepínač `-x`, který:
+
+* pokud byl předán, omezí procházení pouze na položky nacházející se na stejném zařízení,
+* v případě, kdy naleznete soubory/složky, které leží na jiném zařízení než kořen, tak je ignorujte,
+* pokud se jedná o složku, potom ji ani neotevírejte.
+
+=== Unicode strom [10 bodů]
+
+Rozšiřte svůj program o přepínač `-u`, který přepne výpis prefixů z ASCII do Unicode znaků.
+
+* Tyto znaky vytvoří dojem spojitých čar v terminálu a pěkné odbočky pro nalezené položky.
+* Tedy nahradíte prefixy
+** `"|&#160;&#160;&#160;"`
+** `"|-- "`
+** `"\\-- "`
+* Protože se jedná o bonusové rozšíření, nebudeme vám dávat přímo použité znaky, ale jejich získání je na vás.
+* Získat je můžete jak z programu `tree`, tak i z referenční implementace.
+* *POZOR*, své řešení zkontrolujte proti výpisu referenční implementace. Program `tree`
+  totiž používá i unicode mezery (tedy znak mezery na více bytech), kterým se referenční implementace vyhýbá a
+  testy je nepředpokládají.
+
+== Testování
+
+Jako u předchozích domácích úloh máte k dispozici sadu testů, které odpovídají obsahem i provedením těm, které
+jsou vykonány v rámcí testování nanečisto, nicméně tím, že testujeme proti reálnému soborovému systému, 
+mají tyto testy několik zásadních omezení.
+
+Ve kostře máte standardně dostupný `CMakeLists.txt` který obsahuje běžné definice na které jste zvyklí, tedy
+popis pro překlad projektu (včetně povinných maker), připravené soubory pro jednotkové testy v CUT (které jako vždy
+velmi doporučujeme vytvořit) a nově také sadu integračních testů, která odpovídá postupu testování nanečisto
+v kontru. Bohužel vzhledem k široké různorodosti souborových systémů je pravděpodobné, že tyto testy nebudou
+plně fungovat na vašich lokálních strojích, kvůli různým vypsaným velikostem - což se může stát například kvůli
+různé implementaci složek, nebo velikosti bloků - tedy jako rozumný kompromis jsme se rozhodli, že tyto tyto testy
+jsou implementovány specificky pro aisu, kde víme, že fungují a kde se bude vaše řešení samo testovat kontrem. 
+
+Integrační test je popsán na dvou místech, nejdřive popíšete testovací scénář (tedy jaké soubory vygenerovat 
+v jaké adresářové struktuře) a následně přidáte soubor s očekávaným výstupem (doporučujeme si jej vygenerovat
+pomocí referenční implementace). Testovací skript bude tento vygenerovaný soubor porovnávat s vaší implementací 
+na shodu a v případě nesouladu vám zobrazí rozdíl ve formátu `diff`. Pokud byste chtěli, nebo potřebovali tyto
+testy nějakým způsobem upravit například pro běh na vašem lokálním počítači, můžete použít příkaz `du` s přepínačem 
+`-h`, který by měl ve většině případů počítat stejným způsobem jaký je vyžadován v této úloze a zobrazovat 
+v korektních jednotkách.
+
+Samotný popis toho jakým způsobem v tomto formátu testovat najdete již v kostře zadání a tedy z tohoto místa na ní pouze
+odkazujeme.
+
+Prosím mějte také na paměti, že z úplně stejných důvodů nebude fungovat ani `gitlab-ci` pro tyto integrační testy.
+Nicméně jednotkové testy, které popíšete v `CUT` budou fungovat tak, jak jste zvyklí - pokud v nich nebudete popisovat
+scénáře pracující na souborovém systému.
+
+== Poznámky
+
+
+[WARNING]
+.Při testování na aise využívejte složku `/data/$(whoami)` místo `/home/$(whoami)`.
+====
+Tato úloha se zabývá prací na souborovém systému a tedy pravděpodobně budete potřebovat
+vytvářet soubory různých velikostí a vlastností, proti kterým budete spouštět jak svoji
+implementaci, tak i tu referenční. Mějte ale na mysli, že `/home/` je sdílený souborový 
+systém ve vzdáleném úložišti, který je používaný všemi uživateli sítě FI MU. CVT tento disk
+pravidelně zálohuje a jeho výpadek by mohl ohrozit například funkčnost klientských počítačů
+v síti. Tedy `/home/` není pro takové testování vhodný. Naproti tomu, máte přístupný i 
+souborový systém v `/data/`, který není zálohovaný a je na něm výrazně vyšší kvóta. 
+
+Více informací o kvótách a úložišti síti FI si můžete přečist zde https://www.fi.muni.cz/tech/unix/quotas.html.cs
+====
+
+* Své řešení zkoušejte proti referenční implementaci na `/home/kontr/pb071/hw05/dt`.
+* Při řešení používejte na ukládání velikostí celá čísla, převod do desetinných čísel proveďte až v okamžiku výpisu.
+* Pokud narazíte na nejasnost v zadání, zkuste si nejdříve zjistit odpověď pomocí referenční implementace.
+** Pokud vám její chování nepomůže, napište na diskuzní fórum předmětu.
+* Referenční implementace umožňuje spojování přepínačů do jednoho řetězce, tedy
+  situaci `-aux` rozumí stejným způsobem jako `-a -u -x`. Toto chování nemusíte implementovat
+  a můžete předpokládat, že vaše implementace nebude tímto způsobem testována.
+* Váš program může implementovat přepínač `-h` pro vypsání nápovědy. Stejně jako spojování
+  přepínačů, nebude tento přepínač předán při testování správného ošetření chybných vstupů.
+* Váš program bude kompilován s definovanými makry `_BSD_SOURCE` a `_XOPEN_SOURCE`, tedy ve své implementaci můžete 
+  využívat všechny funkce, které vyžadují tato http://www.man7.org/linux/man-pages/man7/feature_test_macros.7.html[feature test macros].
+  Žádná další z těchto maker nepoužívejte, protože jejich užití může vést k chybě kompilace,
+  případně k neuznání vaší implementace cvičícím, a tedy potenciálně ke ztrátě bodů.
+* Taktéž bude k vašemu řešení přilinkována matematická knihovna, můžete tedy využívat všechny výhody `math.h`.
+* U této úlohy jsme se rozhodli, že necháme rozdělení funkcionality do zdrojových souborů na vás. Testovány budou
+  všechny soubory s koncovkami `.h` a `.c`. Máte tedy naprostou volnost v tom jak problém dekomponovat
+  a rozdělit do nezávislých komponent.
+** Doporučujeme si před odevzdáním nanečisto přeložit vaše řešení ve složce `hw05` v repozitáři pro domácí úlohy příkazem:
+
+[source]
+----
+gcc -std=c99 -Wall -Wextra -pedantic -Werror -D_BSD_SOURCE -D_XOPEN_SOURCE *.c -lm
+----
+
+** Příkaz by měl vytvořit spustitelný soubor `a.out` a neměl by produkovat žádný výstup.

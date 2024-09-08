@@ -1,0 +1,237 @@
+---
+title: "HW01: Hammingov kód (40,32)"
+layout: "homework"
+list-of-files: ["main.c"]
+solution-path: "/home/kontr/pb071/hw01/hamming"
+publish: ~
+deadline-early: 2023-03-01 24:00
+deadline-final: 2023-03-08 24:00
+use-mathjax: true
+authors:
+  - xsutor
+---
+:figure-caption!:
+
+== Predstavenie úlohy
+
+Tvoja mamka prišla za tebou so svojim problémom.
+Ukázala ti cédéčko na ktorom má **veľmi** dôležite dáta, a bojí sa, že sa poškriabaním
+zničia. Preto ti neostáva nič inéfootnote:[Vážne nie], ako napísať vlastné kódovanie
+schopné odhaliť a opraviť chyby.
+
+== Zadanie
+Vašou úlohou bude napísať program, ktorý bude vedieť zakódovať a dekódovať prúd bajtov zo
+štandardného vstupu. Výsledok kódovania, resp. dekódovania sa vypíše na štandardný výstup. +
+Na kódovanie sa použije naša upravená verzia https://en.wikipedia.org/wiki/Hamming_code[Hammingovho kódu],
+ktorého algoritmus je popísaný v nasledujúcich dvoch sekciách.
+
+=== Kódovanie [[encode]]
+Kódovať budeme každú štvoricu bajtov zo štandardného vstupu na výstupnú päticu bajtov.
+V rámci tohto textu budeme nazývať túto vstupnú štvoricu *informačné slovo* a výstupnú päticu bajtov *kódové slovo*.
+
+Algoritmus si vysvetlíme na príklade kódovania informačného slova +++$00010203_{\text{HEX}}$+++ (hodnota pozostáva zo 4 bajtov zapísaných v hexadecimálnej sústave).
+
+Pre lepšiu vizualizáciu slov si každý bajt uložíme do tabuľky
+pod seba a rozpíšeme na osmicu bitov. Každá bunka tabuľky obsahuje bit a jeho
+pozíciu. Pozíciu budeme značiť v dvojkovej sústave, kvôli lepšiemu porozumeniu algoritmu.
+
+image::images/ilustrations_Information word.svg[, 500]
+
+.Algoritmus
+
+[decimal]
+. Všetky bity informačného slova uložíme do kódového slova, pričom
+  nevypĺňame nultú pozíciu, poslednú pozíciu a pozície, ktoré sú mocninami dvojky.
+  Teda pozície 0, 1, 2, 4, 8, 16, 32 a 39 sa preskočia.
+  Bity začneme ukladať od pozície 3.
+
+image::images/ilustrations_Encoded without parity.svg[, 500]
+
+[decimal, start=2]
+. Nultý a posledný bit kódového slova nastavíme na nulu
+
+image::images/ilustrations_Encoded word - first and last.svg[, 500]
+
+[decimal, start=3]
+. Bity na pozíciach mocniny dvojky nazveme paritné bity.
+  Hodnota paritného bitu na pozícii +++$2^i$+++ sa vypočíta ako bitový exkluzívny súčet
+  (XOR +++$\oplus$+++) bitov, ktorých pozícia v dvojkovej sústave má jednotku na `i`-tom bite.
+
+Vzhľadom k tomu, ako funguje XOR, tak nás budú zaujímať len bity s hodnotou jedna.
+Výpočet bude nasledujúci:
+
+* +++$p_{000001} = b_{000011} \oplus b_{000101} \oplus b_{000111} \oplus \cdots \oplus b_{100111} = b_{010101} \oplus b_{100101} = 1 \oplus 1 = 0$+++
+* +++$p_{000010} = b_{000011} \oplus b_{000110} \oplus b_{000111} \oplus \cdots \oplus b_{100111} = b_{100110} = 1$+++
+* +++$p_{000100} = b_{000101} \oplus b_{000110} \oplus b_{000111} \oplus \cdots \oplus b_{100111} = b_{010101} \oplus b_{011100} \oplus b_{100101} \oplus b_{100110} = 0$+++
+* +++$p_{001000} = b_{001001} \oplus b_{001011} \oplus b_{001100} \oplus \cdots \oplus b_{011111} = b_{011100} = 1$+++
+* +++$p_{010000} = b_{010001} \oplus b_{010011} \oplus b_{010100} \oplus \cdots \oplus b_{011111} = b_{010101} \oplus b_{011100} = 0$+++
+* +++$p_{100000} = b_{100001} \oplus b_{100011} \oplus b_{100100} \oplus \cdots \oplus b_{100111} = b_{100101} \oplus b_{100110} = 0$+++
+
+pričom +++$p_x$+++ označuje paritný bit na pozícii `x` a +++$b_x$+++ označuje bit na pozícii `x`.
+
+.Výpočet paritných bitov
+image::images/parity-animation/parity.gif[, 500]
+
+Takže výsledné kódové slovo bude +++$2080040806_{\text{HEX}}$+++.
+
+image::images/ilustrations_Encoded word - final.svg[, 500]
+
+=== Dekódovanie [[decode]]
+Dekódovanie popíšeme
+na našom predošlom kódovom slove +++$2080040806_{\text{HEX}}$+++.
+Vzhľadom k tomu, že sme informačné bity pri kódovaní nemodifikovali, tak stačí, aby
+sme z kódového slova vytiahli informačné slovo presne opačne, ako
+pri kódovaní. Teda zoberieme prvých 32 bitov, ktoré nie sú na pozíciach
+mocniny dvojky alebo na nultej a poslednej pozícii.
+Tým pádom dostaneme naspäť informačné slovo +++$00010203_{\text{HEX}}$+++.
+
+Paritné bity využijeme v rámci <<bonus, bonusového rozšírenia>>.
+
+NOTE: Okrem papiera a ceruzky si môžete algoritmy vyskúšať v našej https://www.fi.muni.cz/~xsutor/pb071/bitclicker[interaktívnej aplikácii].
+
+== Požiadavky
+
+Kostra zadania obsahuje dve prázdne funkcie, `encode()` a `decode()`.
+Vašou úlohou je tieto dve funkcie doimplementovať podľa
+nasledujúcich požiadaviek:
+
+[source, c]
+----
+bool encode(void);
+----
+
+Funkcia postupne číta bajty zo štandardného vstupu a každé 4 bajty zakóduje
+na 5 bajtov, ktoré vypíše na štandardný výstup. Použite kódovanie popísané v sekcii <<encode>>.
+
+Ak celkový počet bajtov na vstupe nebude deliteľný 4, tak
+sa bajty vyplnia nulovými bajtmi sprava.
+Napríklad vstup +++$010203_{\text{HEX}}$+++ sa zakóduje rovnako ako +++$01020300_{\text{HEX}}$+++.
+
+Je postačujúce, aby `encode()` vrátila vždy `true`. Jediný chybový stav je
+v prípade, keby nastala chyba pri čítaní zo štandardného vstupu. Tento stav
+nemusíte ošetrovať.
+
+[source, c]
+----
+bool decode(void);
+----
+
+Analogicky táto funkcia bude čítať bajty zo štandardného vstupu a každých
+5 bajtov dekóduje na pôvodné štyri bajty postupom popísaným v sekcii <<decode>>.
+Na rozdiel od `encode()`, v prípade, že vstup nebude deliteľný 5, tak funkcia
+vráti `false` a na štandardný chybový výstup vypíše chybovú hlášku `"Wrong code word"` a znak konca riadka.
+V opačnom prípade vráti `true`.
+
+IMPORTANT: Pre vypísanie hlášky na štandardný chybový výstup použite napríklad príkaz +
+`fprintf(stderr, "Wrong code word\n")`. Znak konca riadka je nutný a testy ho tam budú očakávať.
+
+NOTE: Program berie dva prepínače. `-e` na kódovanie, ktorý zavolá funkciu `encode()` a `-d` na dekódovanie,
+ktorý zavolá funkciu `decode()`.
+
+== Bonusové rozšírenia [[bonus]]
+
+=== Detekcia a oprava jednoduchej chyby [15 b]
+
+Rozšírte funkciu `decode()` aby vo vstupnom kódovom slove vedela na
+informačných bitoch rozoznať a opraviť jednoduchú chybu
+a na paritných bitoch rozoznať jednoduchú chybu.
+
+NOTE: Slovo s jednoduchou chybou sa líši od kódového slova práve v jednom bite.
+
+==== Algoritmus
+
+. Urobíme XOR pozícií bitov, ktoré sú nastavené na hodnotu 1.
+. Vetvíme na základe výsledku XORu:
+.. Ak výsledok je 0, tak nenastala žiadna chyba.
+.. Inak výsledok reprezentuje pozíciu bitu, na ktorom nastala chyba.
+
+==== Príklad
+Pre naše príkladové kódové slovo +++$2080040806_{\text{HEX}}$+++ spravíme chybu
+v bite na pozícii 3 a dostaneme slovo +++$3080040806_{\text{HEX}}$+++.
+
+image::images/ilustrations_Encoded word - final error.svg[, 500]
+
+Ak spravíme XOR všetkých pozícií bitov s hodnotou 1 tak dostaneme:
+[source]
+----
+Pozície v dvojkovej sústave ktoré XORneme
+
+000010
+000011
+001000
+010101
+011100
+100101
+100110
+------
+000011
+----
+
+Pri detekcii chyby program vypíše na štandardný
+chybový výstup `"One-bit error in byte X"` a znak konca riadka, kde `X` je poradie
+prečítaného bajtu zo vstupu. Indexuje sa od nuly. +
+V prípade detekcie chyby na informačnom bite sa chyba musí aj opraviť.
+Program pokračuje vo výpočte v prípade detekcie chyby.
+
+== Užitočné Poznámky
+
+* Pre načítanie znaku zo vstupu a vypísanie znaku na výstup si vystačíte
+s funkciami https://en.cppreference.com/w/c/io/getchar[`getchar()`] a
+https://en.cppreference.com/w/c/io/putchar[`putchar()`].
+* Odporúčame používať typy s pevnou dĺžkou definované v https://en.cppreference.com/w/c/types/integer[`stdint.h`].
+* Vašu implementáciu si môžete porovnať so vzorovou, ktorá sa nachádza na aise.
+Umiestnenie vzorovej implementácie je:
+----
+{{ page.solution-path }}
+----
+
+=== Ako testovať?
+
+==== Jednotkové testy
+Odporúčaný spôsob, ako otestovať vašu implementáciu je napísaním jednotkových
+testov.
+V kostre nájdete súbor `tests/tests-nanecisto.c`, ktorý obsahuje testy nanečisto, ktoré
+okrem samotných testov obsahujú aj podrobný popis, ako si napísať vlastné jednotkové testy.
+Pre testovanie sa používa testovací framework https://gitlab.fi.muni.cz/pb071/cut[CUT]. +
+Pri písaní testov sa vám určite bude hodiť naša https://www.fi.muni.cz/~xsutor/pb071/bitclicker[interaktívna aplikácia].
+
+==== Príkazová riadka
+Ďalší spôsob, ako otestovať vašu implementáciu na Linuxe je použiť napr. príkaz `echo`:
+
+[source, bash]
+----
+echo -en  "\x00\x01\x02\x03" | ./hamming
+echo -en  "\x20\x80\x04\x08\x06" | ./hamming -d
+----
+
+Keďže nie všetky bajty sú zobraziteľné, tak je potrebné aby sme výstup
+nášho programu vedeli rozumne zobraziť. Našťastie na to môžeme použiť
+napr. programy `hexdump` alebo `xxd`.
+
+[source, bash]
+----
+echo -en  "\x00\x01\x02\x03" | ./hamming | hexdump -C
+# Výstup
+# 00000000  20 80 04 08 06                                    | ....|
+# 00000005
+
+echo -en  "\x20\x80\x04\x08\x06" | ./hamming -d | xxd
+# Výstup
+# 00000000: 0001 0203                                ....
+----
+
+Na Windows odporúčame použiť https://www.fi.muni.cz/pb071/man/#wsl[Windows Subsystem for Linux]
+alebo https://www.fi.muni.cz/pb071/man/#git-for-windows-verzovac%C3%AD-syst%C3%A9m[Git Bash]
+
+Niektoré Linuxové distribúcie nepodporujú všetky prepínače. V takom
+prípade testujte na svoj kód na aise.
+
+Čo znamená príkaz `echo -en "\x00\x01\x02\x03" | ./hamming`?
+
+* spusti príkaz `echo` s prepínačmi `e` a `n` s argumentom `\x00\x01\x02\x03`.
+** prepínač `e` zapína interpretovanie znaku `\`
+** prepínač `n` vypína pridanie znaku nového riadka na koniec výstupu
+** argument `\x00` reprezentuje bajt s hodnotou nula. Hodnota je v šestnástkovej sústave.
+Analogicky platí pre `\x01`, `\0x02` a `\0x03`.
+* znak `|` spôsobí, že výstup programu `echo` sa presmeruje na vstup
+programu `./hamming`.
